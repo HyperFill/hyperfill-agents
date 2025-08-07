@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { FilamentAPIClient } from "./filament-client";
+import { AdvancedMarketAnalyzer, FilamentAPIClient } from "./services/analyzer.js";
 
 // Initialize core components
 const filamentClient = new FilamentAPIClient();
+const analyzer = new AdvancedMarketAnalyzer()
 /// =====================
 // TOOL DEFINITIONS
 // =====================

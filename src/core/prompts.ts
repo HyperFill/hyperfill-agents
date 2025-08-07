@@ -1,12 +1,10 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { AdvancedMarketAnalyzer, ActionType } from "./analyzer"; // Import your Python classes
-import { FilamentAPIClient } from "./services/filament_client.js";
-import { filamentConfig } from "./config.js";
+import { AdvancedMarketAnalyzer, FilamentAPIClient } from "./services/analyzer.js";
 // import { FilamentAPIClient } from "./filament-client";
 
 // Initialize core components
-const filamentClient = new FilamentAPIClient(filamentConfig);
+const filamentClient = new FilamentAPIClient();
 const analyzer = new AdvancedMarketAnalyzer();
 
 // =====================

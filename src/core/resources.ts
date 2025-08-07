@@ -1,12 +1,14 @@
 import { McpServer, ResourceTemplate} from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { AdvancedMarketAnalyzer, MarketData, Opportunity, ActionType } from "./analyzer"; // Import your Python classes
-import { FilamentAPIClient } from "./filament-client";
+import { FilamentAPIClient } from "./services/analyzer.js";
 
 
 // =====================
 // RESOURCE DEFINITIONS
 // =====================
+
+const filamentClient = new FilamentAPIClient()
 
 export function registerResources(server: McpServer) {
   // Market data resource
