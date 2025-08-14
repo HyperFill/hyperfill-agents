@@ -13,25 +13,49 @@ llm = LLM(
     temperature=0.7
 )
 
-# MCP Server configuration
-# sei
-server_params_list = [
-    {"url": "http://localhost:1000/mcp", "transport": "streamable-http"}, # Trade Analyzing
-    {"url": "http://localhost:2000/mcp", "transport": "streamable-http"}, # Executive mcp server
-
-    {"url": "http://localhost:3001/mcp", "transport": "streamable-http"}, # Sei mcp server
-    {"url": "http://localhost:4000/mcp", "transport": "streamable-http"}, # inventory mcp server
-
-
+# Individual MCP Server configurations
+trade_analyzer_server = [
+    {"url": "http://localhost:1000/mcp", "transport": "streamable-http"}  # Trade Analyzing
 ]
 
-mcp_server_adapter = None
+executive_server = [
+    {"url": "http://localhost:2000/mcp", "transport": "streamable-http"}  # Executive mcp server
+]
+
+sei_server = [
+    {"url": "http://localhost:3001/mcp", "transport": "streamable-http"}  # Sei mcp server
+]
+
+inventory_server = [
+    {"url": "http://localhost:4000/mcp", "transport": "streamable-http"}  # inventory mcp server
+]
+
+# Initialize separate MCP adapters for each agent
+trade_analyzer_adapter = None
+executive_adapter = None
+sei_adapter = None
+inventory_adapter = None
+
 try:
-    mcp_server_adapter = MCPServerAdapter(server_params_list)
-    tools = mcp_server_adapter.tools
-    print(f"Available tools: {[tool.name for tool in tools]}")
+    # Initialize individual adapters
+    trade_analyzer_adapter = MCPServerAdapter(trade_analyzer_server)
+    executive_adapter = MCPServerAdapter(executive_server)
+    sei_adapter = MCPServerAdapter(sei_server)
+    inventory_adapter = MCPServerAdapter(inventory_server)
+    
+    # Get tools from each adapter
+    trade_analyzer_tools = trade_analyzer_adapter.tools
+    executive_tools = executive_adapter.tools
+    sei_tools = sei_adapter.tools
+    inventory_tools = inventory_adapter.tools
+    
+    print(f"Trade Analyzer tools: {[tool.name for tool in trade_analyzer_tools]}")
+    print(f"Executive tools: {[tool.name for tool in executive_tools]}")
+    print(f"SEI tools: {[tool.name for tool in sei_tools]}")
+    print(f"Inventory tools: {[tool.name for tool in inventory_tools]}")
 
     # ===== AGENT 1: CRYPTO TRADE ANALYZER AND PRICING AGENT =====
+    # This agent gets access to trade analyzing tools AND sei tools for market data
     crypto_analyzer = Agent(
         role="Senior Crypto Trade Analyzer and Pricing Specialist",
         goal="""Analyze current market conditions, price movements, and chart patterns for SEI network assets. 
@@ -41,7 +65,7 @@ try:
         on the SEI network, interpreting price action, volume patterns, and market sentiment. You use advanced 
         tools including Black-Scholes analysis for options strategies and synthetic positions. Your analysis 
         forms the foundation for all trading decisions.""",
-        tools=tools,
+        tools=trade_analyzer_tools + sei_tools,  # Trade analysis + SEI network tools
         verbose=True,
         llm=llm,
         max_iter=3,
@@ -49,6 +73,7 @@ try:
     )
 
     # ===== AGENT 2: EXECUTIVE TRADING AGENT =====
+    # This agent gets access to executive trading tools only
     executive_trader = Agent(
         role="Executive Trading Agent",
         goal="""Execute trades based on analysis from the pricing agent. Place orders, manage positions, 
@@ -59,7 +84,7 @@ try:
         with precision timing and optimal order placement. You understand market microstructure, slippage 
         management, and various order types. You never execute trades without proper analysis and always 
         implement appropriate risk management measures.""",
-        tools=tools,
+        tools=executive_tools,  # Executive trading tools only
         verbose=True,
         llm=llm,
         max_iter=3,
@@ -67,6 +92,7 @@ try:
     )
 
     # ===== AGENT 3: INVENTORY AND PORTFOLIO TRACKING AGENT =====
+    # This agent gets access to inventory tools only
     inventory_tracker = Agent(
         role="Portfolio Inventory and Risk Manager",
         goal="""Track account balances, monitor all open positions, analyze portfolio performance, 
@@ -77,7 +103,7 @@ try:
         positions, analyze trading performance metrics, and ensure compliance with risk management rules. 
         You provide critical insights about portfolio health, diversification, and exposure management 
         to support informed trading decisions.""",
-        tools=tools,
+        tools=inventory_tools,  # Inventory management tools only
         verbose=True,
         llm=llm,
         max_iter=3,
@@ -221,8 +247,10 @@ try:
 
 except Exception as e:
     print(f"❌ Error in trading system: {e}")
-    print("Ensure the MCP server is running and all tools are available.")
+    print("Ensure the MCP servers are running and all tools are available.")
 finally:
-    if mcp_server_adapter:
-        # Clean up the adapter if needed
-        pass
+    # Clean up adapters if needed
+    for adapter in [trade_analyzer_adapter, executive_adapter, sei_adapter, inventory_adapter]:
+        if adapter:
+            # Clean up the adapter if needed
+            pass
