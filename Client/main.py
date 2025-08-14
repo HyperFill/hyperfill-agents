@@ -75,6 +75,7 @@ try:
     # ===== AGENT 2: EXECUTIVE TRADING AGENT =====
     # This agent gets access to executive trading tools only
     executive_trader = Agent(
+        allow_delegation=True,
         role="Executive Trading Agent",
         goal="""Execute trades based on analysis from the pricing agent. Place orders, manage positions, 
         set stop-losses and take-profits, and handle risk management. Ensure all trades are executed 
@@ -112,6 +113,7 @@ try:
 
     # ===== TRADING ANALYSIS TASK =====
     market_analysis_task = Task(
+
         description="""
         Perform comprehensive market analysis for SEI network crypto assets:
         
@@ -162,6 +164,7 @@ try:
         - Current portfolio impact of new positions
         """,
         agent=executive_trader,
+        context=[market_analysis_task]
     )
 
     # ===== INVENTORY TRACKING TASK =====
@@ -254,3 +257,6 @@ finally:
         if adapter:
             # Clean up the adapter if needed
             pass
+
+
+# Next setup Loop for automation
