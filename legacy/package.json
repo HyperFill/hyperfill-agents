@@ -1,0 +1,39 @@
+{
+  "name": "mcp_ai_agents",
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": {
+    "mcp_ai_agents": "bin/cli.js"
+  },
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/main.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HyperFill/hyperfill-mcp-server.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HyperFill/hyperfill-mcp-server/issues"
+  },
+  "homepage": "https://github.com/HyperFill/hyperfill-mcp-server#readme",
+  "description": "",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.2",
+    "express": "^5.1.0",
+    "install": "^0.13.0",
+    "nanoid": "^5.1.5",
+    "npm": "^11.5.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.2.1",
+    "typescript": "^5.9.2"
+  }
+}
