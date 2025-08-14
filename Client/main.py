@@ -19,8 +19,8 @@ server_params_list = [
     {"url": "http://localhost:1000/mcp", "transport": "streamable-http"}, # Trade Analyzing
     {"url": "http://localhost:2000/mcp", "transport": "streamable-http"}, # Executive mcp server
 
-    {"url": "http://localhost:3000/mcp", "transport": "streamable-http"}, # inventory mcp server
-    {"url": "http://localhost:4000/mcp", "transport": "streamable-http"}, # Sei mcp server
+    {"url": "http://localhost:3001/mcp", "transport": "streamable-http"}, # Sei mcp server
+    {"url": "http://localhost:4000/mcp", "transport": "streamable-http"}, # inventory mcp server
 
 
 ]
