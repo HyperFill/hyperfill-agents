@@ -13,250 +13,127 @@ llm = LLM(
     temperature=0.7
 )
 
-# Individual MCP Server configurations
-trade_analyzer_server = [
-    {"url": "http://localhost:1000/mcp", "transport": "streamable-http"}  # Trade Analyzing
+# Market Analyzer MCP Server configuration
+analyzer_server = [
+    {"url": "http://localhost:2000/mcp", "transport": "streamable-http"}  # Market Analyzer Server
 ]
 
-executive_server = [
-    {"url": "http://localhost:2000/mcp", "transport": "streamable-http"}  # Executive mcp server
-]
-
-sei_server = [
-    {"url": "http://localhost:3001/mcp", "transport": "streamable-http"}  # Sei mcp server
-]
-
-inventory_server = [
-    {"url": "http://localhost:4000/mcp", "transport": "streamable-http"}  # inventory mcp server
-]
-
-# Initialize separate MCP adapters for each agent
-trade_analyzer_adapter = None
-executive_adapter = None
-sei_adapter = None
-inventory_adapter = None
+# Initialize MCP adapter
+analyzer_adapter = None
 
 try:
-    # Initialize individual adapters
-    trade_analyzer_adapter = MCPServerAdapter(trade_analyzer_server)
-    executive_adapter = MCPServerAdapter(executive_server)
-    sei_adapter = MCPServerAdapter(sei_server)
-    inventory_adapter = MCPServerAdapter(inventory_server)
+    # Initialize the market analyzer adapter
+    analyzer_adapter = MCPServerAdapter(analyzer_server)
     
-    # Get tools from each adapter
-    trade_analyzer_tools = trade_analyzer_adapter.tools
-    executive_tools = executive_adapter.tools
-    sei_tools = sei_adapter.tools
-    inventory_tools = inventory_adapter.tools
+    # Get tools from the adapter
+    analyzer_tools = analyzer_adapter.tools
     
-    print(f"Trade Analyzer tools: {[tool.name for tool in trade_analyzer_tools]}")
-    print(f"Executive tools: {[tool.name for tool in executive_tools]}")
-    print(f"SEI tools: {[tool.name for tool in sei_tools]}")
-    print(f"Inventory tools: {[tool.name for tool in inventory_tools]}")
+    print(f"Market Analyzer tools available: {[tool.name for tool in analyzer_tools]}")
+    print("Expected tools: get_supported_markets, fetch_market_assets, get_market_asset, get_asset_by_index_token")
 
-    # ===== AGENT 1: CRYPTO TRADE ANALYZER AND PRICING AGENT =====
-    # This agent gets access to trade analyzing tools AND sei tools for market data
-    crypto_analyzer = Agent(
-        role="Senior Crypto Trade Analyzer and Pricing Specialist",
-        goal="""Analyze current market conditions, price movements, and chart patterns for SEI network assets. 
-        Determine optimal entry prices, risk levels, and trading opportunities using technical analysis and market data.""",
-        backstory="""You are a seasoned cryptocurrency analyst with deep expertise in technical analysis, 
-        market microstructure, and quantitative trading strategies. You specialize in analyzing crypto markets 
-        on the SEI network, interpreting price action, volume patterns, and market sentiment. You use advanced 
-        tools including Black-Scholes analysis for options strategies and synthetic positions. Your analysis 
-        forms the foundation for all trading decisions.""",
-        tools=trade_analyzer_tools + sei_tools,  # Trade analysis + SEI network tools
+    # ===== MARKET RESEARCH AND ANALYSIS AGENT =====
+    market_researcher = Agent(
+        role="Senior Market Research and Analysis Specialist",
+        goal="""Conduct comprehensive market research and analysis across all supported markets. 
+        Identify trading opportunities, basically identify market with spread from 1 percent higher, analyze asset fundamentals, and provide detailed market insights 
+        for informed decision-making.""",
+        backstory="""You are an experienced market researcher with deep expertise in cryptocurrency markets, 
+        asset analysis, and market structure. You specialize in identifying profitable trading opportunities 
+        by analyzing market data, asset characteristics, and Spread in a particular market orderbook, to see where you can provide
+        liquidiy and profit from spread, bid/ask. Your research forms the 
+        foundation for trading strategies and investment decisions. You have extensive knowledge of technical 
+        analysis, fundamental analysis, and quantitative methods for evaluating digital assets.""",
+        tools=analyzer_tools,  # Market analysis tools only
         verbose=True,
         llm=llm,
-        max_iter=3,
+        max_iter=5,
         memory=True
+
+        
     )
 
-    # ===== AGENT 2: EXECUTIVE TRADING AGENT =====
-    # This agent gets access to executive trading tools only
-    executive_trader = Agent(
-        allow_delegation=True,
-        role="Executive Trading Agent",
-        goal="""Execute trades based on analysis from the pricing agent. Place orders, manage positions, 
-        set stop-losses and take-profits, and handle risk management. Ensure all trades are executed 
-        efficiently and according to the trading strategy.""",
-        backstory="""You are a professional trade execution specialist with expertise in order management, 
-        position sizing, and risk control. You work closely with analysts to execute their trading ideas 
-        with precision timing and optimal order placement. You understand market microstructure, slippage 
-        management, and various order types. You never execute trades without proper analysis and always 
-        implement appropriate risk management measures.""",
-        tools=executive_tools,  # Executive trading tools only
-        verbose=True,
-        llm=llm,
-        max_iter=3,
-        memory=True
-    )
-
-    # ===== AGENT 3: INVENTORY AND PORTFOLIO TRACKING AGENT =====
-    # This agent gets access to inventory tools only
-    inventory_tracker = Agent(
-        role="Portfolio Inventory and Risk Manager",
-        goal="""Track account balances, monitor all open positions, analyze portfolio performance, 
-        and maintain comprehensive records of trading history. Provide real-time portfolio analytics 
-        and risk assessment.""",
-        backstory="""You are a meticulous portfolio manager and risk analyst responsible for maintaining 
-        accurate records of all trading activities. You monitor account balances, track P&L across all 
-        positions, analyze trading performance metrics, and ensure compliance with risk management rules. 
-        You provide critical insights about portfolio health, diversification, and exposure management 
-        to support informed trading decisions.""",
-        tools=inventory_tools,  # Inventory management tools only
-        verbose=True,
-        llm=llm,
-        max_iter=3,
-        memory=True
-    )
-
-    # ===== TRADING ANALYSIS TASK =====
-    market_analysis_task = Task(
-
+    # ===== COMPREHENSIVE MARKET DISCOVERY TASK =====
+    market_discovery_task = Task(
         description="""
-        Perform comprehensive market analysis for SEI network crypto assets:
+        Perform comprehensive market discovery and analysis:
         
-        1. Fetch all available assets and analyze current market conditions
-        2. Identify the most liquid and volatile assets suitable for trading
-        3. Analyze price movements, trends, and technical indicators
-        4. Use Black-Scholes analysis to evaluate synthetic options strategies if applicable
-        5. Determine optimal entry points, stop-loss levels, and take-profit targets
-        6. Assess market volatility and recommend position sizing
-        7. Provide specific trading recommendations with risk/reward ratios
+        1. Get all supported markets using get_supported_markets
+        2. For each supported market, fetch all available assets using fetch_market_assets
+        3. Analyze the asset landscape and identify key characteristics:
+           - Total number of assets per market
+           - Asset categories and types
+           - the spread percentage bid/ask
+           - Trading pair availability
+        4. Create a comprehensive market overview report
+        5. Identify markets with the most trading opportunities based on spread percentage
         
-        Focus on assets with good liquidity and clear technical setups.
+        Focus on understanding the complete market ecosystem available for analysis.
         """,
         expected_output="""
-        A detailed market analysis report containing:
-        - List of recommended assets for trading
-        - Technical analysis with entry/exit points
-        - Risk assessment and position sizing recommendations  
-        - Specific price targets and stop-loss levels
-        - Market condition assessment (bullish/bearish/neutral)
-        - Volatility analysis and implied volatility insights
+        A comprehensive market discovery report containing:
+        - Complete list of supported markets
+        - Asset count and breakdown per market
+        - One asset with the highest spread percentage
         """,
-        agent=crypto_analyzer,
-    )
-
-    # ===== TRADE EXECUTION TASK =====
-    trade_execution_task = Task(
-        description="""
-        Based on the market analysis, execute the recommended trades:
-        
-        1. Review the analysis and trading recommendations
-        2. Check current account balance and available margin
-        3. Verify that recommended assets are available for trading
-        4. Place appropriate orders (market or limit) based on the analysis
-        5. Set stop-loss and take-profit orders as recommended
-        6. Confirm successful order placement and provide order IDs
-        7. Monitor initial trade execution and report any issues
-        
-        Do not execute trades without proper analysis from the analyzer agent.
-        Ensure all risk management measures are in place before placing orders.
-        """,
-        expected_output="""
-        A trade execution report containing:
-        - Summary of orders placed with order IDs
-        - Confirmation of stop-loss and take-profit levels set
-        - Position details and entry prices achieved
-        - Any execution issues or slippage encountered
-        - Current portfolio impact of new positions
-        """,
-        agent=executive_trader,
-        context=[market_analysis_task]
-    )
-
-    # ===== INVENTORY TRACKING TASK =====
-    inventory_tracking_task = Task(
-        description="""
-        Monitor and report on current portfolio status:
-        
-        1. Check current account balance and available funds
-        2. Fetch and analyze all open positions
-        3. Review recent trading history and performance
-        4. Calculate unrealized and realized P&L
-        5. Assess portfolio diversification and risk exposure
-        6. Monitor margin usage and available leverage
-        7. Identify any positions that may need attention
-        8. Provide portfolio health assessment
-        
-        Maintain comprehensive records and highlight any risk concerns.
-        """,
-        expected_output="""
-        A comprehensive portfolio report containing:
-        - Current account balance and available funds
-        - Detailed list of all open positions with P&L
-        - Portfolio diversification analysis
-        - Risk metrics and margin utilization
-        - Recent trading performance summary
-        - Recommendations for portfolio optimization
-        - Any positions requiring immediate attention
-        """,
-        agent=inventory_tracker,
-    )
-
-    # ===== COMPLETE TRADING STRATEGY TASK =====
-    strategy_coordination_task = Task(
-        description="""
-        Coordinate a complete trading strategy cycle:
-        
-        1. Ensure market analysis is comprehensive and actionable
-        2. Verify trade execution aligns with analysis recommendations
-        3. Confirm portfolio tracking captures all changes accurately
-        4. Identify any discrepancies between analysis, execution, and tracking
-        5. Provide overall assessment of trading strategy effectiveness
-        6. Recommend adjustments for future trading cycles
-        
-        This task ensures all three agents work together cohesively.
-        """,
-        expected_output="""
-        A strategy coordination summary containing:
-        - Verification that analysis was properly executed
-        - Confirmation of accurate portfolio tracking
-        - Assessment of strategy effectiveness
-        - Recommendations for improvement
-        - Next steps for ongoing trading operations
-        """,
-        agent=crypto_analyzer,  # Lead agent for coordination
+        agent=market_researcher,
     )
 
     # ===== CREW SETUP =====
-    trading_crew = Crew(
-        agents=[crypto_analyzer, executive_trader, inventory_tracker],
-        tasks=[
-            market_analysis_task,
-            inventory_tracking_task,  # Check portfolio first
-            trade_execution_task,
-            strategy_coordination_task
-        ],
+    # market_analysis_crew = Crew(
+    #     agents=[market_researcher],
+    #     tasks=[
+    #         market_discovery_task
+    #     ],
+    #     verbose=True,
+    #     process=Process.sequential,  # Execute tasks in logical order
+    #     memory=True,
+    #     planning=True  # Enable planning for better analysis flow
+    # )
+
+
+    embedder = {
+    "provider": "groq",
+        "config": {
+            "model": "groq/llama-3.3-70b-versatile",
+            "api_key": groq_key
+        }
+    }
+
+    market_analysis_crew = Crew(
+        embedder=embedder,
+        planning_llm=llm,
+        agents=[market_researcher],
+        tasks=[market_discovery_task],
         verbose=True,
-        process=Process.sequential,  # Execute tasks in order
-        memory=True,
-        planning=True  # Enable planning for better coordination
+        process=Process.sequential,
+        memory=False,        # <- disable memory to avoid OpenAI-based embeddings
+        llm=llm,             # <- set the Crew's default LLM to your GROQ LLM
+        planning=True
     )
 
-    # ===== EXECUTE TRADING CYCLE =====
+    # ===== EXECUTE MARKET ANALYSIS =====
     print("\n" + "="*80)
-    print("🚀 STARTING COMPREHENSIVE TRADING CYCLE")
+    print("🔍 STARTING COMPREHENSIVE MARKET ANALYSIS")
     print("="*80 + "\n")
     
-    result = trading_crew.kickoff()
+    result = market_analysis_crew.kickoff()
     
     print("\n" + "="*80)
-    print("📊 TRADING CYCLE COMPLETE")
+    print("📊 MARKET ANALYSIS COMPLETE")
     print("="*80)
-    print(f"\nFinal Result:\n{result}")
+    print(f"\nFinal Strategic Intelligence Report:\n{result}")
 
 except Exception as e:
-    print(f"❌ Error in trading system: {e}")
-    print("Ensure the MCP servers are running and all tools are available.")
+    print(f"❌ Error in market analysis system: {e}")
+    print("Ensure the Market Analyzer MCP server is running on localhost:1000")
+    import traceback
+    traceback.print_exc()
 finally:
-    # Clean up adapters if needed
-    for adapter in [trade_analyzer_adapter, executive_adapter, sei_adapter, inventory_adapter]:
-        if adapter:
-            # Clean up the adapter if needed
-            pass
+    # Clean up adapter if needed
+    if analyzer_adapter:
+        # Clean up the adapter if needed
+        pass
 
-
-# Next setup Loop for automation
+print("\n" + "="*50)
+print("Market Analysis Client Ready for Automation")
+print("="*50)
