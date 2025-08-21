@@ -229,7 +229,7 @@ if __name__ == "__main__":
         print(f"Confidence: {classification.confidence:.2f}")
         print("-" * 40)
     
-    # Print real usage statistics
+    # Print usage statistics
     stats = router.get_usage_stats()
     print(f"\nProduction Usage Statistics:")
     print(f"Total Requests: {stats['total_requests']}")
