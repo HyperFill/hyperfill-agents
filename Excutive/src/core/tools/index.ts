@@ -1,78 +1,96 @@
-// src/writeTools.ts
+// src/readTools.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import FilamentTrader from "../../services/FilamentClient";
+import HyperFillMMClient from "../../client/hyper-fillmm-client";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { getMidPriceGate } from "../../client/price-oracle-client";
+import { config } from "../../services/config";
 
-// Schema definitions for write tool inputs
-const placeLimitOrderSchema = z.object({
-    asset: z.string().describe("Asset symbol (e.g., 'ETH', 'BTC')"),
-    isBuy: z.boolean().describe("True for buy order, false for sell order"),
-    price: z.string().describe("Limit price as string"),
-    size: z.number().describe("Order size"),
-    leverage: z.number().optional().describe("Leverage (optional, defaults to configured default)"),
-    reduceOnly: z.boolean().optional().default(false).describe("Whether this is a reduce-only order")
+// Schema definitions for read tool inputs
+const moveAssetAmountSchema = z.object({
+    assetAmountToMove: z.string().describe("This is the asset amount to move from vault"),
 });
 
-const placeMarketOrderSchema = z.object({
-    asset: z.string().describe("Asset symbol (e.g., 'ETH', 'BTC')"),
-    isBuy: z.boolean().describe("True for buy order, false for sell order"),
-    size: z.number().describe("Order size"),
-    leverage: z.number().optional().describe("Leverage (optional, defaults to configured default)"),
-    slippage: z.number().optional().describe("Slippage tolerance (optional, defaults to configured default)"),
-    reduceOnly: z.boolean().optional().default(false).describe("Whether this is a reduce-only order")
-});
+const hyperfillOrderBookAbi = [
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "tradingWallet",
+                "type": "address"
+            }
+        ],
+        "name": "moveFromVaultToWallet",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
 
-const cancelOrderSchema = z.object({
-    orderId: z.string().describe("ID of the order to cancel")
-});
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "profitAmount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "fromWallet",
+                "type": "address"
+            }
+        ],
+        "name": "moveFromWalletToVault",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]
 
-const closePositionSchema = z.object({
-    asset: z.string().describe("Asset symbol to close position for"),
-    closePrice: z.string().describe("Price to close at"),
-    quantity: z.number().optional().describe("Quantity to close (optional, closes entire position if not specified)")
-});
+export function registerTools(server: McpServer, filamentApi: HyperFillMMClient, seiClientFactory: () => Promise<Client>) {
 
-const collateralSchema = z.object({
-    asset: z.string().describe("Asset symbol"),
-    collateral: z.number().describe("Collateral amount"),
-    isBuy: z.boolean().describe("Position direction")
-});
-
-const takeProfitStopLossSchema = z.object({
-    asset: z.string().describe("Asset symbol"),
-    price: z.string().describe("Take profit or stop loss price"),
-    size: z.string().describe("Position size"),
-    isBuy: z.boolean().describe("Position direction")
-});
-
-export function registerTools(server: McpServer, filamentApi: FilamentTrader) {
-
-    // ===== ORDER PLACEMENT =====
+    // ===== ASSET MANAGEMENT (READ) =====
     server.registerTool(
-        "place_limit_order",
+        "move_assets_from_vault_to_wallet",
         {
-            title: "Place Limit Order",
-            description: "Place a limit order on Filament",
-            inputSchema: placeLimitOrderSchema.shape,
+            title: "Move to Agent Wallet",
+            description: "Move a particular asset amount from vault to agent wallet",
         },
-        async ({ asset, isBuy, price, size, leverage, reduceOnly }) => {
+        async ({ assetAmountToMove }) => {
             try {
-                const result = await filamentApi.placeLimitOrder(
-                    asset, isBuy, price, size, leverage, reduceOnly
-                );
+                const client = await seiClientFactory()
 
-                const responseText = await result.response.text();
+                const result = await client.callTool({
+                    name: "write_contract",
+                    arguments: {
+                        contractAddress: config.vaultContractAddress,
+                        abi: hyperfillOrderBookAbi,
+                        functionName: "moveFromVaultToWallet",
+                        args: [assetAmountToMove, config.agentWallet],
+                        network: "sei-testnet",
+
+                    }
+                });
                 return {
                     content: [{
                         type: "text",
-                        text: `Order placed successfully!\nOrder ID: ${result.orderId}\nResponse: ${responseText}`
+                        text: JSON.stringify(result, null, 2)
                     }]
                 };
             } catch (err: any) {
                 return {
                     content: [{
                         type: "text",
-                        text: `Error placing limit order: ${err.message}`
+                        text: `Error fetching assets: ${err.message}`
                     }]
                 };
             }
@@ -80,30 +98,37 @@ export function registerTools(server: McpServer, filamentApi: FilamentTrader) {
     );
 
     server.registerTool(
-        "place_market_order",
+        "move_assets_from_wallet_to_vault",
         {
-            title: "Place Market Order",
-            description: "Place a market order on Filament",
-            inputSchema: placeMarketOrderSchema.shape,
+            title: "Move to vault Wallet",
+            description: "Move a particular asset amount from agent to vault wallet",
         },
-        async ({ asset, isBuy, size, leverage, slippage, reduceOnly }) => {
+        async ({ assetAmountToMove }) => {
             try {
-                const result = await filamentApi.placeMarketOrder(
-                    asset, isBuy, size, leverage, slippage, reduceOnly
-                );
+                const client = await seiClientFactory()
 
-                const responseText = await result.response.text();
+                const result = await client.callTool({
+                    name: "write_contract",
+                    arguments: {
+                        contractAddress: config.vaultContractAddress,
+                        abi: hyperfillOrderBookAbi,
+                        functionName: "moveFromWalletToVault",
+                        args: [assetAmountToMove, config.agentPrivateKey],
+                        network: "sei-testnet",
+
+                    }
+                });
                 return {
                     content: [{
                         type: "text",
-                        text: `Market order placed successfully!\nOrder ID: ${result.orderId}\nResponse: ${responseText}`
+                        text: JSON.stringify(result, null, 2)
                     }]
                 };
             } catch (err: any) {
                 return {
                     content: [{
                         type: "text",
-                        text: `Error placing market order: ${err.message}`
+                        text: `Error fetching assets: ${err.message}`
                     }]
                 };
             }
@@ -111,177 +136,79 @@ export function registerTools(server: McpServer, filamentApi: FilamentTrader) {
     );
 
     server.registerTool(
-        "cancel_order",
+        "start_market_maker_bot",
         {
-            title: "Cancel Order",
-            description: "Cancel an existing order",
-            inputSchema: cancelOrderSchema.shape,
+            title: "Move to vault Wallet",
+            description: "Move a particular asset amount from agent to vault wallet",
         },
-        async ({ orderId }) => {
+        async ({ assetAmountToMove }) => {
             try {
-                const response = await filamentApi.cancelOrder(orderId);
-                const responseText = await response.text();
+                const client = await seiClientFactory()
 
+                const result = await client.callTool({
+                    name: "write_contract",
+                    arguments: {
+                        contractAddress: config.vaultContractAddress,
+                        abi: hyperfillOrderBookAbi,
+                        functionName: "moveFromWalletToVault",
+                        args: [assetAmountToMove, config.agentPrivateKey],
+                        network: "sei-testnet",
+
+                    }
+                });
                 return {
                     content: [{
                         type: "text",
-                        text: `Cancel order request sent.\nResponse: ${responseText}`
+                        text: JSON.stringify(result, null, 2)
                     }]
                 };
             } catch (err: any) {
                 return {
                     content: [{
                         type: "text",
-                        text: `Error canceling order: ${err.message}`
+                        text: `Error fetching assets: ${err.message}`
                     }]
                 };
             }
         }
     );
 
-    // ===== POSITION MANAGEMENT =====
-    server.registerTool(
-        "close_position",
-        {
-            title: "Close Position",
-            description: "Close an existing position",
-            inputSchema: closePositionSchema.shape,
-        },
-        async ({ asset, closePrice, quantity }) => {
-            try {
-                const result = await filamentApi.closePosition(asset, closePrice, quantity);
-                const responseText = await result.response.text();
 
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Position close order placed!\nOrder ID: ${result.orderId}\nResponse: ${responseText}`
-                    }]
-                };
-            } catch (err: any) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Error closing position: ${err.message}`
-                    }]
-                };
-            }
-        }
-    );
+    // server.registerTool(
+    //     "fetch_vault_asset_balance",
+    //     {
+    //         title: "Fetch Vault Asset Balance",
+    //         description: "Fetches Vault Available Balance",
+    //     },
+    //     async () => {
+    //         try {
+    //             const client = await seiClientFactory()
 
-    server.registerTool(
-        "add_collateral",
-        {
-            title: "Add Collateral",
-            description: "Add collateral to a position",
-            inputSchema: collateralSchema.shape,
-        },
-        async ({ asset, collateral, isBuy }) => {
-            try {
-                const response = await filamentApi.addCollateral(asset, collateral, isBuy);
-                const responseText = await response.text();
+    //             const result = await client.callTool({
+    //                 name: "read_contract",
+    //                 arguments: {
+    //                     contractAddress: "0xbaC8D6A511A673fCE111D8c14c760aDE68116558",
+    //                     abi: hyperfillAbi,
+    //                     functionName: "totalSupply",
+    //                     args: [],
+    //                     network: "sei-testnet",
 
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Add collateral request sent.\nResponse: ${responseText}`
-                    }]
-                };
-            } catch (err: any) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Error adding collateral: ${err.message}`
-                    }]
-                };
-            }
-        }
-    );
-
-    server.registerTool(
-        "remove_collateral",
-        {
-            title: "Remove Collateral",
-            description: "Remove collateral from a position",
-            inputSchema: collateralSchema.shape,
-        },
-        async ({ asset, collateral, isBuy }) => {
-            try {
-                const response = await filamentApi.removeCollateral(asset, collateral, isBuy);
-                const responseText = await response.text();
-
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Remove collateral request sent.\nResponse: ${responseText}`
-                    }]
-                };
-            } catch (err: any) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Error removing collateral: ${err.message}`
-                    }]
-                };
-            }
-        }
-    );
-
-    server.registerTool(
-        "set_take_profit",
-        {
-            title: "Set Take Profit",
-            description: "Set a take profit order for a position",
-            inputSchema: takeProfitStopLossSchema.shape,
-        },
-        async ({ asset, price, size, isBuy }) => {
-            try {
-                const response = await filamentApi.setTakeProfit(asset, price, size, isBuy);
-                const responseText = await response.text();
-
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Take profit set successfully.\nResponse: ${responseText}`
-                    }]
-                };
-            } catch (err: any) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Error setting take profit: ${err.message}`
-                    }]
-                };
-            }
-        }
-    );
-
-    server.registerTool(
-        "set_stop_loss",
-        {
-            title: "Set Stop Loss",
-            description: "Set a stop loss order for a position",
-            inputSchema: takeProfitStopLossSchema.shape,
-        },
-        async ({ asset, price, size, isBuy }) => {
-            try {
-                const response = await filamentApi.setStopLoss(asset, price, size, isBuy);
-                const responseText = await response.text();
-
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Stop loss set successfully.\nResponse: ${responseText}`
-                    }]
-                };
-            } catch (err: any) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Error setting stop loss: ${err.message}`
-                    }]
-                };
-            }
-        }
-    );
+    //                 }
+    //             });
+    //             return {
+    //                 content: [{
+    //                     type: "text",
+    //                     text: JSON.stringify(result, null, 2)
+    //                 }]
+    //             };
+    //         } catch (err: any) {
+    //             return {
+    //                 content: [{
+    //                     type: "text",
+    //                     text: `Error fetching assets: ${err.message}`
+    //                 }]
+    //             };
+    //         }
+    //     }
+    // );
 }

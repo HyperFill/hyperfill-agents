@@ -1,7 +1,7 @@
 // src/readTools.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import HyperFillMMClient from "../../market_clients/hyper-fillmm-client";
+import HyperFillMMClient from "../../client/hyper-fillmm-client";
 import { MarketManager } from "../../services/market-manager";
 
 // Schema definitions for read tool inputs

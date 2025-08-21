@@ -1,4 +1,4 @@
-import HyperFillMMClient, { AssetInfo, HyperFillConfig } from "../market_clients/hyper-fillmm-client"
+import HyperFillMMClient, { AssetInfo, HyperFillConfig } from "../client/hyper-fillmm-client"
 
 
 

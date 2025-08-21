@@ -3,5 +3,7 @@ dotenv.config()
 
 export const config = {
     account: process.env.ACCOUNT_ADDRESS || "",
-    privateKey: process.env.PRIVATE_KEY || ""
+    agentPrivateKey: process.env.PRIVATE_KEY || "",
+    agentWallet: process.env.ACCOUNT_ADDRESS || "",
+    vaultContractAddress: process.env.VAULT_CONTRACT_ADDRESS || ""
 }

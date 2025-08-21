@@ -25,7 +25,7 @@
   "homepage": "https://github.com/HyperFill/hyperfill-mcp-server#readme",
   "description": "",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.2",
+    "@modelcontextprotocol/sdk": "^1.17.3",
     "express": "^5.1.0",
     "install": "^0.13.0",
     "nanoid": "^5.1.5",
@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
-    "@types/minimatch": "^5.1.2",
+    "@types/minimatch": "^6.0.0",
     "@types/node": "^24.2.1",
     "typescript": "^5.9.2"
   }

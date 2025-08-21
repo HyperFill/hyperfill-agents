@@ -7,14 +7,16 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerTools } from "../core/tools";
 import FilamentTrader from "../services/FilamentClient";
 import { config } from "../services/config";
+import HyperFillMMClient from "../client/hyper-fillmm-client";
+import { fetchMcpSeiClient } from "../client/MCPSSEClient";
 
 const app = express();
 app.use(express.json());
 
 // create server once and register tools
 const server = new McpServer({ name: "example-server", version: "1.0.0" });
-const filamentApi = new FilamentTrader({ account: config.account, privateKey: config.privateKey })
-registerTools(server, filamentApi);
+const hyperfillApi = new HyperFillMMClient({ account: config.account, privateKey: config.privateKey, simulationMode: true })
+registerTools(server, hyperfillApi, fetchMcpSeiClient);
 
 // session -> transport map
 const transports: Record<string, StreamableHTTPServerTransport> = {};

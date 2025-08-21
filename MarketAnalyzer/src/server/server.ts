@@ -5,7 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerTools } from "../core/tools";
-import { HyperFillMMClient } from "../market_clients/hyper-fillmm-client";
+import { HyperFillMMClient } from "../client/hyper-fillmm-client";
 import { config } from "../services/config";
 import { MarketManager } from "../services/market-manager";
 
