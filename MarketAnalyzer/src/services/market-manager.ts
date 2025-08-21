@@ -1,4 +1,5 @@
-import HyperFillMMClient, { AssetInfo, HyperFillConfig } from "../client/hyper-fillmm-client"
+import HyperFillMMClient, { AssetInfo, HyperFillConfig } from "../market_clients/hyper-fillmm-client.js"
+import { config } from "./config.js"
 
 
 
@@ -31,13 +32,13 @@ export class MarketManager {
         for (let market of this._marketList) {
             if (market.marketName == marketName) {
 
-                let config: HyperFillConfig = {
-                    baseUrl: "http://localhost:3000",
-                    privateKey: "0x",
-                    simulationMode: true,
-                    account: "1"
+                const marketConfig: HyperFillConfig = {
+                    baseUrl: process.env.MARKET_BASE_URL || "http://localhost:3000",
+                    privateKey: config.privateKey,
+                    simulationMode: process.env.SIMULATION_MODE !== 'false',
+                    account: config.account
                 }
-                client = new HyperFillMMClient(config)
+                client = new HyperFillMMClient(marketConfig)
             }
 
         }

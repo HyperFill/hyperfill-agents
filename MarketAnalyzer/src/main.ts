@@ -1,9 +1,9 @@
-import MarketAnalyzerApp from "./server/server"
+import AnalyzerApp from "./server/server.js"
 
 async function main() {
-    const mcp_servers = [MarketAnalyzerApp]
+    const mcp_servers = [AnalyzerApp]
     mcp_servers.map((server, index) => {
-        let port = (index + 2) * 1000
+        let port = 2000 + index
         server.listen(port, () => console.log(server.get("name") + " MCP server listening on :" + port))
     })
 }

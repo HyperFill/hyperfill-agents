@@ -8,38 +8,30 @@ groq_key = get_groq_key()
 print(groq_key, "GROQ_KEY")
 os.environ["GROQ_API_KEY"] = get_groq_key()
 
-max_response_tokens = 512
 llm = LLM(
     model="groq/llama-3.3-70b-versatile",
-    temperature=0.7,
-    max_tokens=max_response_tokens
+    temperature=0.7
 )
 
-# Market Analyzer MCP Server configuration
-servers = [
-    {"url": "http://localhost:2000/mcp", "transport": "streamable-http"} , # Market Analyzer Server
-    {"url": "http://localhost:3000/mcp", "transport": "streamable-http"} , # Market Analyzer Server
-
+# MCP Servers configuration (Analyzer + Sei MCP)
+mcp_servers = [
+    {"url": "http://localhost:2000/mcp", "transport": "streamable-http"},  # Market Analyzer Server
+    {"url": "http://localhost:3001/mcp", "transport": "streamable-http"},  # Sei MCP Server
 ]
 
 # Initialize MCP adapter
 analyzer_adapter = None
-pricer_adapter = None
-
 
 try:
-    # Initialize the market analyzer adapter
-    analyzer_adapter = MCPServerAdapter(servers)
-    pricer_adapter = MCPServerAdapter(servers[1])
-
+    # Initialize the MCP adapter aggregating both servers
+    analyzer_adapter = MCPServerAdapter(mcp_servers)
     
     # Get tools from the adapter
     analyzer_tools = analyzer_adapter.tools
-    pricer_tools = pricer_adapter.tools
-
     
     print(f"Market Analyzer tools available: {[tool.name for tool in analyzer_tools]}")
-    print("Expected tools: get_supported_markets, fetch_market_assets, get_market_asset, get_asset_by_index_token")
+    print("Expected Analyzer tools: get_supported_markets, fetch_market_assets, get_market_asset, get_asset_by_index_token")
+    print("Expected Sei tools: get-token-info, get-token-balance, get-balance, get-transaction, read-contract, write-contract")
 
     # ===== MARKET RESEARCH AND ANALYSIS AGENT =====
     market_researcher = Agent(
@@ -54,30 +46,11 @@ try:
         foundation for trading strategies and investment decisions. You have extensive knowledge of technical 
         analysis, fundamental analysis, and quantitative methods for evaluating digital assets.""",
         tools=analyzer_tools,  # Market analysis tools only
-        verbose=False,
+        verbose=True,
         llm=llm,
-        max_iter=4,
-        # memory=True    
-    )
+        max_iter=5,
+        memory=True
 
-    Pricer = Agent(
-        role="Senior Market Price Strategist",
-        goal="""
-                Ascertain the Amount in Hyper fill vault, 
-                randomly decide based on amont in vault what order size to use for the buy and sell side of the market order,
-                query the proper mid price based on bid and ask price of the particular pair in question
-            """,
-        backstory="""You are a Senior Market Price Strategist with deep experience in crypto markets and market-making.
-        You analyze orderbooks, bid/ask spreads,
-            and pool reserves to compute reliable mid-prices,
-            then size buy and sell orders based on the vault balance and measured liquidity.
-            You prioritize safe execution, balanced inventory, 
-            and profitable spread capture while observing risk limits and market impact.""",
-        tools=pricer_tools,  # Market analysis tools only
-        verbose=False,
-        llm=llm,
-        max_iter=4,
-        # memory=True
         
     )
 
@@ -107,28 +80,6 @@ try:
         agent=market_researcher,
     )
 
-    pricing_task = Task(
-        description="""
-        based on current bid and ask Set the set the bid and ask price at around a profitable percentage from mid price or asset pair:
-        
-        1. Get the Balance of the Vault and the underlying asset which should be SEI
-        2. Randomly decide based on amount in vault what order size to put in
-        3. Ascertain the proper mid price for that pair
-        4. Properly set the starting bid and ask price spread gap percentage
-        5. This is a spread strategy we want to get the best prices possible for profitability also with frequent trades
-        
-        Focus on understanding spread strategy and setting the best price possible.
-        """,
-        expected_output="""
-        A comprehensive report containing:
-        - order size
-        - the pair to enter
-        - The spread percentage for the entry this is meant for the executive agent to execute
-        - the current balance in vault
-        """,
-        agent=Pricer,
-    )
-
     # ===== CREW SETUP =====
     # market_analysis_crew = Crew(
     #     agents=[market_researcher],
@@ -142,24 +93,24 @@ try:
     # )
 
 
-    # embedder = {
-    # "provider": "groq",
-    #     "config": {
-    #         "model": "groq/llama-3.3-70b-versatile",
-    #         "api_key": groq_key
-    #     }
-    # }
+    embedder = {
+    "provider": "groq",
+        "config": {
+            "model": "groq/llama-3.3-70b-versatile",
+            "api_key": groq_key
+        }
+    }
 
     market_analysis_crew = Crew(
-        # embedder=embedder,
-        # planning_llm=llm,
-        agents=[market_researcher, Pricer],
-        tasks=[market_discovery_task, pricing_task],
-        verbose=False,
+        embedder=embedder,
+        planning_llm=llm,
+        agents=[market_researcher],
+        tasks=[market_discovery_task],
+        verbose=True,
         process=Process.sequential,
-        memory=False,
-        llm=llm,             
-        # planning=True
+        memory=False,        # <- disable memory to avoid OpenAI-based embeddings
+        llm=llm,             # <- set the Crew's default LLM to your GROQ LLM
+        planning=True
     )
 
     # ===== EXECUTE MARKET ANALYSIS =====
@@ -176,7 +127,7 @@ try:
 
 except Exception as e:
     print(f"❌ Error in market analysis system: {e}")
-    print("Ensure the Market Analyzer MCP server is running on localhost:1000")
+    print("Ensure MarketAnalyzer is on http://localhost:2000/mcp and Sei MCP server on http://localhost:3001/mcp")
     import traceback
     traceback.print_exc()
 finally:

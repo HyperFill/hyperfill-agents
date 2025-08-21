@@ -4,10 +4,10 @@ import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { registerTools } from "../core/tools";
-import { HyperFillMMClient } from "../client/hyper-fillmm-client";
-import { config } from "../services/config";
-import { MarketManager } from "../services/market-manager";
+import { registerTools } from "../core/tools/index.js";
+import { HyperFillMMClient } from "../market_clients/hyper-fillmm-client.js";
+import { config } from "../services/config.js";
+import { MarketManager } from "../services/market-manager.js";
 
 const app = express();
 app.use(express.json());
@@ -72,6 +72,6 @@ const handleSessionRequest = async (req: express.Request, res: express.Response)
 
 app.get("/mcp", handleSessionRequest);
 app.delete("/mcp", handleSessionRequest);
-app.set("name", "Analyzer")
+app.set("name", "MarketAnalyzer")
 
 export default app

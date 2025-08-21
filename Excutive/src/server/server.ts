@@ -4,18 +4,18 @@ import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { registerTools } from "../core/tools";
-import { config } from "../services/config";
-import HyperFillMMClient from "../client/hyper-fillmm-client";
-import { fetchMcpSeiClient } from "../client/MCPSSEClient";
+import { registerTools } from "../core/tools/index.js";
+import FilamentTrader from "../services/FilamentClient.js";
+import { config } from "../services/config.js";
 
 const app = express();
 app.use(express.json());
 
 // create server once and register tools
 const server = new McpServer({ name: "example-server", version: "1.0.0" });
-const hyperfillApi = new HyperFillMMClient({ account: config.account, privateKey: config.agentPrivateKey, simulationMode: true })
-registerTools(server, hyperfillApi, fetchMcpSeiClient);
+// register all tools from separate file
+const filamentApi = new FilamentTrader({ account: config.account, privateKey: config.privateKey })
+registerTools(server, filamentApi);
 
 // session -> transport map
 const transports: Record<string, StreamableHTTPServerTransport> = {};
@@ -71,6 +71,6 @@ const handleSessionRequest = async (req: express.Request, res: express.Response)
 
 app.get("/mcp", handleSessionRequest);
 app.delete("/mcp", handleSessionRequest);
-app.set("name", "Analyzer")
+app.set("name", "Executive")
 
 export default app

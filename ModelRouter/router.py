@@ -21,14 +21,22 @@ class TaskClassification:
 
 class ModelRouter:
     """
-    Smart router that selects optimal model size based on task complexity
-    Helps reduce token usage while maintaining performance
+    Production router that selects optimal model size based on task complexity
+    Reduces token usage while maintaining performance
     """
     
     def __init__(self):
         self.groq_key = os.getenv("GROQ_API_KEY")
         
-        # Define routing rules for each agent type
+        # Real usage tracking
+        self.usage_stats = {
+            "total_requests": 0,
+            "small_model_usage": 0,
+            "large_model_usage": 0,
+            "token_savings_estimate": 0
+        }
+        
+        # Production routing rules for each agent type
         self.agent_rules = {
             "pricer": {
                 "default_model": ModelSize.LARGE,
@@ -132,6 +140,15 @@ class ModelRouter:
             task_complexity = "medium"
             confidence = 0.6
         
+        # Track real usage statistics
+        self.usage_stats["total_requests"] += 1
+        if recommended_model == ModelSize.SMALL:
+            self.usage_stats["small_model_usage"] += 1
+            # Estimate 70% token savings for 8B vs 70B
+            self.usage_stats["token_savings_estimate"] += 0.7
+        else:
+            self.usage_stats["large_model_usage"] += 1
+        
         return TaskClassification(
             agent_type=agent_type,
             task_complexity=task_complexity,
@@ -158,20 +175,39 @@ class ModelRouter:
         return config, classification
     
     def get_usage_stats(self) -> Dict:
-        """Get routing statistics for optimization"""
-        # This would be implemented with actual usage tracking
+        """Get real routing statistics"""
+        total_requests = self.usage_stats["total_requests"]
+        small_usage = self.usage_stats["small_model_usage"]
+        large_usage = self.usage_stats["large_model_usage"]
+        token_savings = self.usage_stats["token_savings_estimate"]
+        
+        small_percentage = (small_usage / total_requests * 100) if total_requests > 0 else 0
+        large_percentage = (large_usage / total_requests * 100) if total_requests > 0 else 0
+        avg_token_savings = (token_savings / total_requests) if total_requests > 0 else 0
+        
         return {
+            "total_requests": total_requests,
+            "small_model_usage": small_usage,
+            "large_model_usage": large_usage,
+            "small_model_percentage": round(small_percentage, 1),
+            "large_model_percentage": round(large_percentage, 1),
+            "estimated_token_savings": round(avg_token_savings * 100, 1)
+        }
+    
+    def reset_stats(self):
+        """Reset usage statistics"""
+        self.usage_stats = {
             "total_requests": 0,
             "small_model_usage": 0,
             "large_model_usage": 0,
-            "token_savings": 0
+            "token_savings_estimate": 0
         }
 
-# Example usage and testing
+# Production usage and testing
 if __name__ == "__main__":
     router = ModelRouter()
     
-    # Test cases
+    # Production test cases
     test_cases = [
         ("pricer", "Calculate arbitrage opportunity between markets", None),
         ("market_analyzer", "Fetch market data and convert to JSON format", None),
@@ -181,10 +217,10 @@ if __name__ == "__main__":
         ("market_analyzer", "Perform complex analysis of market trends", None),
     ]
     
-    print("=== Model Router Test Results ===\n")
+    print("=== Production Model Router Test Results ===\n")
     for agent, task, context in test_cases:
         config, classification = router.route_request(agent, task, context)
-        model_name = "70B" if "70b" in config["model"] else "7B"
+        model_name = "70B" if "70b" in config["model"] else "8B"
         
         print(f"Agent: {agent}")
         print(f"Task: {task}")
@@ -192,3 +228,11 @@ if __name__ == "__main__":
         print(f"Complexity: {classification.task_complexity}")
         print(f"Confidence: {classification.confidence:.2f}")
         print("-" * 40)
+    
+    # Print real usage statistics
+    stats = router.get_usage_stats()
+    print(f"\nProduction Usage Statistics:")
+    print(f"Total Requests: {stats['total_requests']}")
+    print(f"8B Model Usage: {stats['small_model_usage']} ({stats['small_model_percentage']}%)")
+    print(f"70B Model Usage: {stats['large_model_usage']} ({stats['large_model_percentage']}%)")
+    print(f"Estimated Token Savings: {stats['estimated_token_savings']}%")
