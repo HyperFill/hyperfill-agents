@@ -1,7 +1,6 @@
 import { ethers } from "ethers";
 import { config } from "./config.js";
 
-// Strongly typed interfaces matching HyperFill API
 interface OrderRequest {
   account: string;
   baseAsset: string;
