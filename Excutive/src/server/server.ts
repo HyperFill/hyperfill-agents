@@ -5,17 +5,17 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerTools } from "../core/tools/index.js";
-import FilamentTrader from "../services/FilamentClient.js";
+import HyperFillClient from "../services/HyperFillClient.js";
 import { config } from "../services/config.js";
 
 const app = express();
 app.use(express.json());
 
 // create server once and register tools
-const server = new McpServer({ name: "example-server", version: "1.0.0" });
+const server = new McpServer({ name: "hyperfill-executive", version: "1.0.0" });
 // register all tools from separate file
-const filamentApi = new FilamentTrader({ account: config.account, privateKey: config.privateKey })
-registerTools(server, filamentApi);
+const hyperFillClient = new HyperFillClient();
+registerTools(server, hyperFillClient);
 
 // session -> transport map
 const transports: Record<string, StreamableHTTPServerTransport> = {};

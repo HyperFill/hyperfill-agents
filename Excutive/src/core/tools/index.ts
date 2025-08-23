@@ -1,73 +1,70 @@
 // src/writeTools.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import FilamentTrader from "../../services/FilamentClient.js";
+import HyperFillClient from "../../services/HyperFillClient.js";
 
-// Schema definitions for write tool inputs
+// Schema definitions for HyperFill API tools
 const placeLimitOrderSchema = z.object({
-    asset: z.string().describe("Asset symbol (e.g., 'ETH', 'BTC')"),
+    asset: z.string().describe("Asset pair (e.g., 'SEI/USDT', 'BTC/USDT')"),
     isBuy: z.boolean().describe("True for buy order, false for sell order"),
     price: z.string().describe("Limit price as string"),
-    size: z.number().describe("Order size"),
-    leverage: z.number().optional().describe("Leverage (optional, defaults to configured default)"),
-    reduceOnly: z.boolean().optional().default(false).describe("Whether this is a reduce-only order")
+    size: z.number().describe("Order size/quantity")
 });
 
 const placeMarketOrderSchema = z.object({
-    asset: z.string().describe("Asset symbol (e.g., 'ETH', 'BTC')"),
+    asset: z.string().describe("Asset pair (e.g., 'SEI/USDT', 'BTC/USDT')"),
     isBuy: z.boolean().describe("True for buy order, false for sell order"),
-    size: z.number().describe("Order size"),
-    leverage: z.number().optional().describe("Leverage (optional, defaults to configured default)"),
-    slippage: z.number().optional().describe("Slippage tolerance (optional, defaults to configured default)"),
-    reduceOnly: z.boolean().optional().default(false).describe("Whether this is a reduce-only order")
+    size: z.number().describe("Order size/quantity")
 });
 
 const cancelOrderSchema = z.object({
-    orderId: z.string().describe("ID of the order to cancel")
+    orderId: z.string().describe("ID of the order to cancel"),
+    asset: z.string().describe("Asset pair (e.g., 'SEI/USDT')"),
+    side: z.string().describe("Order side ('bid' or 'ask')")
 });
 
-const closePositionSchema = z.object({
-    asset: z.string().describe("Asset symbol to close position for"),
-    closePrice: z.string().describe("Price to close at"),
-    quantity: z.number().optional().describe("Quantity to close (optional, closes entire position if not specified)")
+const getOrderbookSchema = z.object({
+    asset: z.string().describe("Asset pair (e.g., 'SEI/USDT', 'BTC/USDT')")
 });
 
-const collateralSchema = z.object({
-    asset: z.string().describe("Asset symbol"),
-    collateral: z.number().describe("Collateral amount"),
-    isBuy: z.boolean().describe("Position direction")
+const getBestOrderSchema = z.object({
+    asset: z.string().describe("Asset pair (e.g., 'SEI/USDT', 'BTC/USDT')"),
+    side: z.enum(["bid", "ask"]).describe("Side to get best order for")
 });
 
-const takeProfitStopLossSchema = z.object({
-    asset: z.string().describe("Asset symbol"),
-    price: z.string().describe("Take profit or stop loss price"),
-    size: z.string().describe("Position size"),
-    isBuy: z.boolean().describe("Position direction")
+const checkFundsSchema = z.object({
+    asset: z.string().describe("Asset to check funds for (e.g., 'SEI', 'USDT')")
 });
 
-export function registerTools(server: McpServer, filamentApi: FilamentTrader) {
+export function registerTools(server: McpServer, hyperFillClient: HyperFillClient) {
 
     // ===== ORDER PLACEMENT =====
     server.registerTool(
         "place_limit_order",
         {
             title: "Place Limit Order",
-            description: "Place a limit order on Filament",
+            description: "Place a limit order on HyperFill orderbook",
             inputSchema: placeLimitOrderSchema.shape,
         },
-        async ({ asset, isBuy, price, size, leverage, reduceOnly }) => {
+        async ({ asset, isBuy, price, size }) => {
             try {
-                const result = await filamentApi.placeLimitOrder(
-                    asset, isBuy, price, size, leverage, reduceOnly
-                );
+                const result = await hyperFillClient.placeLimitOrder(asset, isBuy, price, size);
 
-                const responseText = await result.response.text();
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Order placed successfully!\nOrder ID: ${result.orderId}\nResponse: ${responseText}`
-                    }]
-                };
+                if (result.success) {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Order placed successfully!\nOrder ID: ${result.orderId}\nTrades: ${result.trades?.length || 0}\nMessage: ${result.message}`
+                        }]
+                    };
+                } else {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Order failed: ${result.message}`
+                        }]
+                    };
+                }
             } catch (err: any) {
                 return {
                     content: [{
@@ -83,22 +80,28 @@ export function registerTools(server: McpServer, filamentApi: FilamentTrader) {
         "place_market_order",
         {
             title: "Place Market Order",
-            description: "Place a market order on Filament",
+            description: "Place a market order on HyperFill orderbook",
             inputSchema: placeMarketOrderSchema.shape,
         },
-        async ({ asset, isBuy, size, leverage, slippage, reduceOnly }) => {
+        async ({ asset, isBuy, size }) => {
             try {
-                const result = await filamentApi.placeMarketOrder(
-                    asset, isBuy, size, leverage, slippage, reduceOnly
-                );
+                const result = await hyperFillClient.placeMarketOrder(asset, isBuy, size);
 
-                const responseText = await result.response.text();
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Market order placed successfully!\nOrder ID: ${result.orderId}\nResponse: ${responseText}`
-                    }]
-                };
+                if (result.success) {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Market order placed successfully!\nOrder ID: ${result.orderId}\nTrades: ${result.trades?.length || 0}\nMessage: ${result.message}`
+                        }]
+                    };
+                } else {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Market order failed: ${result.message}`
+                        }]
+                    };
+                }
             } catch (err: any) {
                 return {
                     content: [{
@@ -114,20 +117,28 @@ export function registerTools(server: McpServer, filamentApi: FilamentTrader) {
         "cancel_order",
         {
             title: "Cancel Order",
-            description: "Cancel an existing order",
+            description: "Cancel an existing order on HyperFill orderbook",
             inputSchema: cancelOrderSchema.shape,
         },
-        async ({ orderId }) => {
+        async ({ orderId, asset, side }) => {
             try {
-                const response = await filamentApi.cancelOrder(orderId);
-                const responseText = await response.text();
+                const result = await hyperFillClient.cancelOrder(orderId, asset, side);
 
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Cancel order request sent.\nResponse: ${responseText}`
-                    }]
-                };
+                if (result.success) {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Order cancelled successfully\nMessage: ${result.message}`
+                        }]
+                    };
+                } else {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Cancel order failed: ${result.message}`
+                        }]
+                    };
+                }
             } catch (err: any) {
                 return {
                     content: [{
@@ -139,30 +150,38 @@ export function registerTools(server: McpServer, filamentApi: FilamentTrader) {
         }
     );
 
-    // ===== POSITION MANAGEMENT =====
+    // ===== MARKET DATA =====
     server.registerTool(
-        "close_position",
+        "get_orderbook",
         {
-            title: "Close Position",
-            description: "Close an existing position",
-            inputSchema: closePositionSchema.shape,
+            title: "Get Orderbook",
+            description: "Get current orderbook for an asset pair",
+            inputSchema: getOrderbookSchema.shape,
         },
-        async ({ asset, closePrice, quantity }) => {
+        async ({ asset }) => {
             try {
-                const result = await filamentApi.closePosition(asset, closePrice, quantity);
-                const responseText = await result.response.text();
+                const orderbook = await hyperFillClient.getOrderbook(asset);
 
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Position close order placed!\nOrder ID: ${result.orderId}\nResponse: ${responseText}`
-                    }]
-                };
+                if (orderbook) {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Orderbook for ${asset}:\nBest Bid: ${orderbook.bestBid}\nBest Ask: ${orderbook.bestAsk}\nSpread: ${orderbook.spread?.toFixed(2)}%\nBids: ${orderbook.bids.length}\nAsks: ${orderbook.asks.length}`
+                        }]
+                    };
+                } else {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Could not retrieve orderbook for ${asset}`
+                        }]
+                    };
+                }
             } catch (err: any) {
                 return {
                     content: [{
                         type: "text",
-                        text: `Error closing position: ${err.message}`
+                        text: `Error getting orderbook: ${err.message}`
                     }]
                 };
             }
@@ -170,28 +189,36 @@ export function registerTools(server: McpServer, filamentApi: FilamentTrader) {
     );
 
     server.registerTool(
-        "add_collateral",
+        "get_best_order",
         {
-            title: "Add Collateral",
-            description: "Add collateral to a position",
-            inputSchema: collateralSchema.shape,
+            title: "Get Best Order",
+            description: "Get the best bid or ask order for an asset pair",
+            inputSchema: getBestOrderSchema.shape,
         },
-        async ({ asset, collateral, isBuy }) => {
+        async ({ asset, side }) => {
             try {
-                const response = await filamentApi.addCollateral(asset, collateral, isBuy);
-                const responseText = await response.text();
+                const bestOrder = await hyperFillClient.getBestOrder(asset, side);
 
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Add collateral request sent.\nResponse: ${responseText}`
-                    }]
-                };
+                if (bestOrder) {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Best ${side} for ${asset}:\nPrice: ${bestOrder.price}\nQuantity: ${bestOrder.quantity}\nAccount: ${bestOrder.account}\nOrder ID: ${bestOrder.order_id}`
+                        }]
+                    };
+                } else {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `No ${side} orders found for ${asset}`
+                        }]
+                    };
+                }
             } catch (err: any) {
                 return {
                     content: [{
                         type: "text",
-                        text: `Error adding collateral: ${err.message}`
+                        text: `Error getting best order: ${err.message}`
                     }]
                 };
             }
@@ -199,89 +226,40 @@ export function registerTools(server: McpServer, filamentApi: FilamentTrader) {
     );
 
     server.registerTool(
-        "remove_collateral",
+        "check_funds",
         {
-            title: "Remove Collateral",
-            description: "Remove collateral from a position",
-            inputSchema: collateralSchema.shape,
+            title: "Check Available Funds",
+            description: "Check locked funds for an asset",
+            inputSchema: checkFundsSchema.shape,
         },
-        async ({ asset, collateral, isBuy }) => {
+        async ({ asset }) => {
             try {
-                const response = await filamentApi.removeCollateral(asset, collateral, isBuy);
-                const responseText = await response.text();
+                const funds = await hyperFillClient.checkFunds(asset);
 
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Remove collateral request sent.\nResponse: ${responseText}`
-                    }]
-                };
+                if (funds) {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Funds for ${asset}:\nAccount: ${funds.account}\nLocked Amount: ${funds.lockedAmount}`
+                        }]
+                    };
+                } else {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `Could not retrieve funds information for ${asset}`
+                        }]
+                    };
+                }
             } catch (err: any) {
                 return {
                     content: [{
                         type: "text",
-                        text: `Error removing collateral: ${err.message}`
+                        text: `Error checking funds: ${err.message}`
                     }]
                 };
             }
         }
     );
 
-    server.registerTool(
-        "set_take_profit",
-        {
-            title: "Set Take Profit",
-            description: "Set a take profit order for a position",
-            inputSchema: takeProfitStopLossSchema.shape,
-        },
-        async ({ asset, price, size, isBuy }) => {
-            try {
-                const response = await filamentApi.setTakeProfit(asset, price, size, isBuy);
-                const responseText = await response.text();
-
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Take profit set successfully.\nResponse: ${responseText}`
-                    }]
-                };
-            } catch (err: any) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Error setting take profit: ${err.message}`
-                    }]
-                };
-            }
-        }
-    );
-
-    server.registerTool(
-        "set_stop_loss",
-        {
-            title: "Set Stop Loss",
-            description: "Set a stop loss order for a position",
-            inputSchema: takeProfitStopLossSchema.shape,
-        },
-        async ({ asset, price, size, isBuy }) => {
-            try {
-                const response = await filamentApi.setStopLoss(asset, price, size, isBuy);
-                const responseText = await response.text();
-
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Stop loss set successfully.\nResponse: ${responseText}`
-                    }]
-                };
-            } catch (err: any) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Error setting stop loss: ${err.message}`
-                    }]
-                };
-            }
-        }
-    );
 }
