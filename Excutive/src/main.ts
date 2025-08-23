@@ -4,7 +4,7 @@ import { fetchMcpSeiClient } from "./client/MCPSSEClient";
 import ExecutiveServer from "./server/server"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const hyperfillAbi = [
+const hyperfillVaultAbi = [
     {
         "inputs": [],
         "name": "totalSupply",
@@ -27,7 +27,6 @@ async function main() {
         server.listen(port, () => {
 
             try {
-
                 // clientCallTest()
                 // example()
                 fetchMcpSeiClient().then(async (client) => {
@@ -40,7 +39,7 @@ async function main() {
                         name: "read_contract",
                         arguments: {
                             contractAddress: "0xbaC8D6A511A673fCE111D8c14c760aDE68116558",
-                            abi: hyperfillAbi,
+                            abi: hyperfillVaultAbi,
                             functionName: "totalSupply",
                             args: [],
                             network: "sei-testnet",

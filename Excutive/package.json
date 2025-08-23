@@ -12,6 +12,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/main.ts",
+    "bot:start": "node dist/market-maker-bot-client.js",
+    "bot:dev": "ts-node src/client/hyperfill-mm-bot-client.ts",
     "start:bot": "ts-node src/client/bot/market-maker-bot.ts"
   },
   "repository": {
@@ -27,6 +29,7 @@
   "description": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
+    "axios": "^1.11.0",
     "express": "^5.1.0",
     "install": "^0.13.0",
     "nanoid": "^5.1.5",
