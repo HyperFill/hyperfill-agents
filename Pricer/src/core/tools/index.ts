@@ -5,6 +5,9 @@ import FilamentTrader from "../../services/FilamentClient";
 import HyperFillMMClient from "../../client/hyper-fillmm-client";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getMidPriceGate } from "../../client/price-oracle-client";
+import { config } from "dotenv";
+
+config()
 
 // Schema definitions for read tool inputs
 const fetchOraclePriceSchema = z.object({
@@ -28,7 +31,7 @@ const hyperfillAbi = [
     }
 ]
 
-export function registerTools(server: McpServer, filamentApi: HyperFillMMClient, seiClientFactory: () => Promise<Client>) {
+export function registerTools(server: McpServer, hyperfillMMApi: HyperFillMMClient, seiClientFactory: () => Promise<Client>) {
 
     // ===== ASSET MANAGEMENT (READ) =====
     server.registerTool(
@@ -44,7 +47,7 @@ export function registerTools(server: McpServer, filamentApi: HyperFillMMClient,
                 const result = await client.callTool({
                     name: "read_contract",
                     arguments: {
-                        contractAddress: "0xbaC8D6A511A673fCE111D8c14c760aDE68116558",
+                        contractAddress: process.env.VAULT_CONTRACT_ADDRESS,
                         abi: hyperfillAbi,
                         functionName: "totalSupply",
                         args: [],
@@ -96,41 +99,4 @@ export function registerTools(server: McpServer, filamentApi: HyperFillMMClient,
         }
     );
 
-    // server.registerTool(
-    //     "fetch_vault_asset_balance",
-    //     {
-    //         title: "Fetch Vault Asset Balance",
-    //         description: "Fetches Vault Available Balance",
-    //     },
-    //     async () => {
-    //         try {
-    //             const client = await seiClientFactory()
-
-    //             const result = await client.callTool({
-    //                 name: "read_contract",
-    //                 arguments: {
-    //                     contractAddress: "0xbaC8D6A511A673fCE111D8c14c760aDE68116558",
-    //                     abi: hyperfillAbi,
-    //                     functionName: "totalSupply",
-    //                     args: [],
-    //                     network: "sei-testnet",
-
-    //                 }
-    //             });
-    //             return {
-    //                 content: [{
-    //                     type: "text",
-    //                     text: JSON.stringify(result, null, 2)
-    //                 }]
-    //             };
-    //         } catch (err: any) {
-    //             return {
-    //                 content: [{
-    //                     type: "text",
-    //                     text: `Error fetching assets: ${err.message}`
-    //                 }]
-    //             };
-    //         }
-    //     }
-    // );
 }

@@ -4,10 +4,11 @@ import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { registerTools } from "../core/tools";
-import { config } from "../services/config";
-import HyperFillMMClient from "../client/hyper-fillmm-client";
-import { fetchMcpSeiClient } from "../client/MCPSSEClient";
+import HyperFillMMClient from "../client/hyper-fillmm-client.js";
+import { registerTools } from "../core/tools/index.js";
+import { fetchMcpSeiClient } from "../client/MCPSSEClient.js";
+import { config } from "../services/config.js";
+
 
 const app = express();
 app.use(express.json());
@@ -19,6 +20,8 @@ registerTools(server, hyperfillApi, fetchMcpSeiClient);
 
 // session -> transport map
 const transports: Record<string, StreamableHTTPServerTransport> = {};
+// let transport = new StdioClientTransport()
+// await server.connect(transport)
 
 // POST /mcp = client -> server (initialization or client messages)
 app.post("/mcp", async (req: Request, res: Response) => {

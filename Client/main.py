@@ -22,6 +22,8 @@ servers = [
     {"url": "http://localhost:4000/mcp", "transport": "streamable-http"}  # Executive Server
 ]
 
+
+
 # Initialize MCP adapters
 analyzer_adapter = None
 pricer_adapter = None

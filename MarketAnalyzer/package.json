@@ -9,6 +9,8 @@
     "doc": "docs"
   },
   "scripts": {
+    "build:single": "tsc src/server/index.ts --outDir build --target es2020 --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck",
+
     "build": "tsc",
     "start": "node dist/main.js",
     "dev": "ts-node src/main.ts"

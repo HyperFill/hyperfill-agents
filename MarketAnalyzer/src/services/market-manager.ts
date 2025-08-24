@@ -1,4 +1,4 @@
-import HyperFillMMClient, { AssetInfo, HyperFillConfig } from "../client/hyper-fillmm-client"
+import HyperFillMMClient, { HyperFillConfig } from "../client/hyper-fillmm-client"
 
 
 
@@ -6,6 +6,7 @@ interface IMarket {
     marketName: string,
     id: string,
 }
+
 export class MarketManager {
     constructor() {
 
@@ -33,9 +34,8 @@ export class MarketManager {
 
                 let config: HyperFillConfig = {
                     baseUrl: "http://localhost:3000",
-                    privateKey: "0x",
-                    simulationMode: true,
-                    account: "1"
+                    privateKey: process.env.PRIVATE_KEY || "",
+                    account: process.env.ACCOUNT_ADDRESS || ""
                 }
                 client = new HyperFillMMClient(config)
             }
@@ -44,19 +44,4 @@ export class MarketManager {
 
         return client
     }
-
-    // async fetchMarketAssets(marketName: string): Promise<AssetInfo[] | []> {
-    //     const client = this.getMarketClient(marketName)
-    //     if (client)
-    //         return await client?.fetchAssets()
-
-    //     else
-    //         return []
-    // }
-
-    // async fetchMarketAsset(symbol: string): Promise<AssetInfo | undefined> {
-    //     const client = this.getMarketClient(symbol)
-    //     if (client)
-    //         return await client.getAsset(symbol)
-    // }
 }

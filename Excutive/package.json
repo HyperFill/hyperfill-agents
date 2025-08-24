@@ -2,14 +2,16 @@
   "name": "mcp_ai_agents",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "bin": {
-    "mcp_ai_agents": "bin/cli.js"
+    "executive": "bin/index.js"
   },
   "directories": {
     "doc": "docs"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc build src/server/index.ts --outdir build --target es2020",
+    "build:single": "tsc src/server/index.ts --outDir build --target es2020 --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck",
     "start": "node dist/index.js",
     "dev": "ts-node src/main.ts",
     "bot:start": "node dist/market-maker-bot-client.js",
@@ -26,17 +28,22 @@
     "url": "https://github.com/HyperFill/hyperfill-mcp-server/issues"
   },
   "homepage": "https://github.com/HyperFill/hyperfill-mcp-server#readme",
+  "files": [
+    "build"
+  ],
   "description": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "axios": "^1.11.0",
     "express": "^5.1.0",
     "install": "^0.13.0",
+    "minimatch": "^10.0.3",
     "nanoid": "^5.1.5",
     "npm": "^11.5.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
+    "@types/glob": "^9.0.0",
     "@types/minimatch": "^6.0.0",
     "@types/node": "^24.2.1",
     "typescript": "^5.9.2"

@@ -15,7 +15,7 @@ app.use(express.json());
 
 // create server once and register tools
 const server = new McpServer({ name: "example-server", version: "1.0.0" });
-const hyperfillApi = new HyperFillMMClient({ account: config.account, privateKey: config.privateKey, simulationMode: true })
+const hyperfillApi = new HyperFillMMClient({ account: config.account, privateKey: config.agentPrivateKey, simulationMode: true })
 registerTools(server, hyperfillApi, fetchMcpSeiClient);
 
 // session -> transport map

@@ -1,11 +1,11 @@
 // Enhanced readTools.ts with proper bot integration
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import HyperFillMMClient from "../../client/hyper-fillmm-client";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { getMidPriceGate } from "../../client/price-oracle-client";
-import { config } from "../../services/config";
-import { MarketMakerBotClient } from "../../client/hyperfill-mm-bot-client";
+import { MarketMakerBotClient } from "../../client/hyperfill-mm-bot-client.js";
+import HyperFillMMClient from "../../client/hyper-fillmm-client.js";
+import { config } from "../../services/config.js";
+import { getMidPriceGate } from "../../client/price-oracle-client.js";
 
 // Enhanced schema definitions
 const moveAssetAmountSchema = z.object({
