@@ -1,5 +1,18 @@
 # Sei HyperFill Agents
 
+```
+██╗  ██╗██╗   ██╗██████╗ ███████╗██████╗ ███████╗██╗██╗     ██╗     
+██║  ██║╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗██╔════╝██║██║     ██║     
+███████║ ╚████╔╝ ██████╔╝█████╗  ██████╔╝█████╗  ██║██║     ██║     
+██╔══██║  ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██╗██╔══╝  ██║██║     ██║     
+██║  ██║   ██║   ██║     ███████╗██║  ██║██║     ██║███████╗███████╗
+╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝
+
+          First AI Market Making Vault on SEI Network 
+              "We make money while you sleep" - The HyperFill Team
+```
+
+
 ## TL,DR
 For the SEI AI Hackathon, we've built an multi agent system for automated DeFi trading and market making operations called the HyperFill protocol. The system coordinates specialized agents to analyze markets and execute trades based on financial strategies.
 
