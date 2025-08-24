@@ -19,7 +19,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 export async function fetchMcpSeiClient(): Promise<Client> {
     const transport = new StdioClientTransport({
         command: "node",
-        args: ["C:/Users/norbe/Documents/Hackathons/Sei Hackathon/HyperFill/sei-mcp-server/build/index.js"]
+        args: ["src/sei/index.js"]
     });
 
     const client = new Client(

@@ -38,14 +38,18 @@ class RetryingLLM(LLM):
 groq_key = get_groq_key()
 print(groq_key, "GROQ_KEY")
 os.environ["GROQ_API_KEY"] = get_groq_key()
-
+os.environ["OPENAI_API_BASE"] = "https://api.cerebras.ai/v1/chat/completions"
+os.environ["OPENAI_API_KEY"] = os.getenv("CEREBRAS_API_KEY")
 max_response_tokens = 256
 llm = RetryingLLM(
-    model="groq/llama-3.3-70b-versatile",
-    temperature=0.7,
+    # model="groq/llama-3.3-70b-versatile",
+    # temperature=0.7,
     max_tokens=max_response_tokens,
     retries=5,  # try 5 times
     backoff=2,  # exponential: 1s, 2s, 4s, 8s...
+    model="cerebras/llama-3.3-70b",   # or "llama-3.1-8b"
+    temperature=0.7,
+    # max_tokens=512,
 )
 
 # MCP Server configuration
@@ -73,12 +77,12 @@ executive_adapter = None
 try:
     # Initialize the adapters
     analyzer_adapter = MCPServerAdapter([servers[0]])
-    # pricer_adapter = MCPServerAdapter([servers[1]])
+    pricer_adapter = MCPServerAdapter([servers[1]])
     # executive_adapter = MCPServerAdapter([servers[2]])
 
     # Get tools from the adapters
     analyzer_tools = analyzer_adapter.tools
-    # pricer_tools = pricer_adapter.tools
+    pricer_tools = pricer_adapter.tools
     # executive_tools = executive_adapter.tools
 
     print(f"Market Analyzer tools available: {[tool.name for tool in analyzer_tools]}")
@@ -108,7 +112,7 @@ try:
         role="Senior Market Price Strategist",
         goal="""
                 Ascertain the Amount in Hyper fill vault, 
-                randomly decide based on amount in vault what order size to use for the buy and sell side of the market order,
+                decide based on amount in vault what order size to use for the buy and sell side of the market order,
                 query the proper mid price based on bid and ask price of the particular pair in question
             """,
         backstory="""You are a Senior Market Price Strategist with deep experience in crypto markets and market-making.
@@ -117,7 +121,7 @@ try:
             then size buy and sell orders based on the vault balance and measured liquidity.
             You prioritize safe execution, balanced inventory, 
             and profitable spread capture while observing risk limits and market impact.""",
-        # tools=pricer_tools,
+        tools=pricer_tools,
         verbose=False,
         llm=llm,
         max_iter=4,
@@ -181,7 +185,8 @@ try:
         - Recommended order size based on vault balance
         - The specific trading pair to enter
         - The optimal spread percentage for market entry
-        - Current vault balance details
+        - fetch vault balance details
+        - current amount in vault
         - Calculated mid price and recommended bid/ask prices
         """,
         agent=pricer,
@@ -227,12 +232,12 @@ try:
     market_analysis_crew = Crew(
         agents=[
             market_researcher,
-            # pricer,
+            pricer,
             #   executive_trader
         ],
         tasks=[
             market_discovery_task,
-            # pricing_task,
+            pricing_task,
             #   executive_trading_task
         ],
         verbose=False,

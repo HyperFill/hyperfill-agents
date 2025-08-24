@@ -2,7 +2,7 @@
 import { getMidPriceGate } from "./client/price-oracle-client";
 import { fetchMcpSeiClient } from "./client/MCPSSEClient";
 import PricerApp from "./server/server"
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+// import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const hyperfillAbi = [
     {

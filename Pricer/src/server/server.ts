@@ -5,7 +5,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerTools } from "../core/tools";
-import FilamentTrader from "../services/FilamentClient";
 import { config } from "../services/config";
 import HyperFillMMClient from "../client/hyper-fillmm-client";
 import { fetchMcpSeiClient } from "../client/MCPSSEClient";
