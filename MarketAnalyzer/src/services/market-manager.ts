@@ -19,7 +19,7 @@ export class MarketManager {
     _marketList: IMarket[] = [
         {
             marketName: "hyperfill",
-            id: "123"
+            id: "1"
         }
     ]
 
@@ -33,7 +33,7 @@ export class MarketManager {
             if (market.marketName == marketName) {
 
                 let config: HyperFillConfig = {
-                    baseUrl: "http://localhost:3000",
+                    baseUrl: "http://localhost:8000",
                     privateKey: process.env.PRIVATE_KEY || "",
                     account: process.env.ACCOUNT_ADDRESS || ""
                 }

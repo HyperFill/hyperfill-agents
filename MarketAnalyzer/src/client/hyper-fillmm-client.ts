@@ -1,5 +1,3 @@
-import { nanoid } from "nanoid";
-
 // Types and Interfaces
 export interface OrderPayload {
   account: string;

@@ -2,26 +2,67 @@ from crewai import Agent, Task, Crew, Process, LLM
 from crewai_tools import MCPServerAdapter
 from core.utils import get_groq_key
 import os
+import time
+import litellm
+
+
+class RetryingLLM(LLM):
+    def __init__(self, retries=5, backoff=2, **kwargs):
+        super().__init__(**kwargs)
+        self.retries = retries
+        self.backoff = backoff
+    
+    def _safe_tokens(self, messages):
+        """Truncate overly long prompts before sending to Groq."""
+        for m in messages:
+            if m.get("content"):
+                tokens = len(m["content"].split())
+                if tokens > self.max_prompt_tokens:
+                    m["content"] = " ".join(m["content"].split()[:self.max_prompt_tokens])
+        return messages
+
+    def call(self, *args, **kwargs):
+        for i in range(self.retries):
+            try:
+                return super().call(*args, **kwargs)
+            except litellm.RateLimitError as e:
+                wait = self.backoff**i
+                print(
+                    f"[LLM] Rate limit hit. Waiting {wait}s before retry... ({i+1}/{self.retries})"
+                )
+                time.sleep(wait)
+        raise Exception("LLM call failed after retries due to persistent rate limits.")
+
 
 # Setup LLM
 groq_key = get_groq_key()
 print(groq_key, "GROQ_KEY")
 os.environ["GROQ_API_KEY"] = get_groq_key()
 
-max_response_tokens = 512
-llm = LLM(
+max_response_tokens = 256
+llm = RetryingLLM(
     model="groq/llama-3.3-70b-versatile",
     temperature=0.7,
-    max_tokens=max_response_tokens
+    max_tokens=max_response_tokens,
+    retries=5,  # try 5 times
+    backoff=2,  # exponential: 1s, 2s, 4s, 8s...
 )
 
 # MCP Server configuration
 servers = [
-    {"url": "http://localhost:2000/mcp", "transport": "streamable-http"}, # Market Analyzer Server
-    {"url": "http://localhost:3000/mcp", "transport": "streamable-http"}, # Pricer Server  
-    {"url": "http://localhost:4000/mcp", "transport": "streamable-http"}  # Executive Server
+    {
+        "url": "http://localhost:2000/mcp",
+        "transport": "streamable-http",
+    },  # Market Analyzer Server
+    {
+        "url": "http://localhost:3000/mcp",
+        "transport": "streamable-http",
+    },  # Pricer Server
+    {
+        "url": "http://localhost:4000/mcp",
+        "transport": "streamable-http",
+    },  # Executive Server
 ]
-
 
 
 # Initialize MCP adapters
@@ -32,17 +73,17 @@ executive_adapter = None
 try:
     # Initialize the adapters
     analyzer_adapter = MCPServerAdapter([servers[0]])
-    pricer_adapter = MCPServerAdapter([servers[1]]) 
-    executive_adapter = MCPServerAdapter([servers[2]])
+    # pricer_adapter = MCPServerAdapter([servers[1]])
+    # executive_adapter = MCPServerAdapter([servers[2]])
 
     # Get tools from the adapters
     analyzer_tools = analyzer_adapter.tools
-    pricer_tools = pricer_adapter.tools
-    executive_tools = executive_adapter.tools
+    # pricer_tools = pricer_adapter.tools
+    # executive_tools = executive_adapter.tools
 
     print(f"Market Analyzer tools available: {[tool.name for tool in analyzer_tools]}")
-    print(f"Pricer tools available: {[tool.name for tool in pricer_tools]}")
-    print(f"Executive tools available: {[tool.name for tool in executive_tools]}")
+    # print(f"Pricer tools available: {[tool.name for tool in pricer_tools]}")
+    # print(f"Executive tools available: {[tool.name for tool in executive_tools]}")
 
     # ===== MARKET RESEARCH AND ANALYSIS AGENT =====
     market_researcher = Agent(
@@ -76,7 +117,7 @@ try:
             then size buy and sell orders based on the vault balance and measured liquidity.
             You prioritize safe execution, balanced inventory, 
             and profitable spread capture while observing risk limits and market impact.""",
-        tools=pricer_tools,
+        # tools=pricer_tools,
         verbose=False,
         llm=llm,
         max_iter=4,
@@ -95,7 +136,7 @@ try:
         the strategic decisions made by the research and pricing teams, ensuring proper asset 
         management, bot deployment, and continuous monitoring of trading operations. You prioritize 
         capital efficiency, risk management, and operational excellence.""",
-        tools=executive_tools,
+        # tools=executive_tools,
         verbose=False,
         llm=llm,
         max_iter=6,
@@ -107,22 +148,17 @@ try:
         Perform comprehensive market discovery and analysis:
         
         1. Get all supported markets using get_supported_markets
-        2. For each supported market, fetch all available assets using fetch_market_assets
+        2. For each supported market, fetch its orderbook
         3. Analyze the asset landscape and identify key characteristics:
-           - Total number of assets per market
-           - Asset categories and types
-           - the spread percentage bid/ask
-           - Trading pair availability
-        4. Create a comprehensive market overview report
-        5. Identify markets with the most trading opportunities based on spread percentage
-        
+        4. If the spread is drifting (non-stationary / ADF p-value ≥ 0.05 or a persistent trend), stop passive liquidity provision — widen quotes, reduce size, or hedge — until stationarity returns.
+
         Focus on understanding the complete market ecosystem available for analysis.
         """,
         expected_output="""
         A comprehensive market discovery report containing:
         - Complete list of supported markets
         - Asset count and breakdown per market
-        - One asset with the highest spread percentage
+        - One asset with the highest Promise
         """,
         agent=market_researcher,
     )
@@ -181,38 +217,50 @@ try:
         - Next steps for monitoring and optimization
         """,
         agent=executive_trader,
-        context=[market_discovery_task, pricing_task]  # Access to previous task outputs
+        context=[
+            market_discovery_task,
+            pricing_task,
+        ],  # Access to previous task outputs
     )
 
     # ===== CREW SETUP =====
     market_analysis_crew = Crew(
-        agents=[market_researcher, pricer, executive_trader],
-        tasks=[market_discovery_task, pricing_task, executive_trading_task],
+        agents=[
+            market_researcher,
+            # pricer,
+            #   executive_trader
+        ],
+        tasks=[
+            market_discovery_task,
+            # pricing_task,
+            #   executive_trading_task
+        ],
         verbose=False,
         process=Process.sequential,
         memory=False,
-        llm=llm,             
+        llm=llm,
     )
 
     # ===== EXECUTE COMPLETE MARKET MAKING WORKFLOW =====
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("STARTING COMPREHENSIVE MARKET MAKING WORKFLOW")
-    print("="*80 + "\n")
-    
+    print("=" * 80 + "\n")
+
     result = market_analysis_crew.kickoff()
-    
-    print("\n" + "="*80)
+
+    print("\n" + "=" * 80)
     print("MARKET MAKING WORKFLOW COMPLETE")
-    print("="*80)
+    print("=" * 80)
     print(f"\nFinal Execution Report:\n{result}")
 
 except Exception as e:
     print(f"Error in market making system: {e}")
     print("Ensure all MCP servers are running:")
     print("- Market Analyzer: localhost:2000")
-    print("- Pricer: localhost:3000") 
+    print("- Pricer: localhost:3000")
     print("- Executive: localhost:4000")
     import traceback
+
     traceback.print_exc()
 finally:
     # Clean up adapters if needed
@@ -223,6 +271,6 @@ finally:
     if executive_adapter:
         pass
 
-print("\n" + "="*50)
+print("\n" + "=" * 50)
 print("Market Making System Ready for Automation")
-print("="*50)
+print("=" * 50)

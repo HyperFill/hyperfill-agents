@@ -5,8 +5,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerTools } from "../core/tools";
-import { HyperFillMMClient } from "../client/hyper-fillmm-client";
-import { config } from "../services/config";
+// import { HyperFillMMClient } from "../client/hyper-fillmm-client";
+// import { config } from "../services/config";
 import { MarketManager } from "../services/market-manager";
 
 const app = express();
@@ -15,7 +15,7 @@ app.use(express.json());
 // create server once and register tools
 const server = new McpServer({ name: "example-server", version: "1.0.0" });
 const marketManager = new MarketManager()
-const filamentApi = new HyperFillMMClient({ account: config.account, privateKey: config.privateKey, simulationMode: true })
+// const filamentApi = new HyperFillMMClient({ account: config.account, privateKey: config.agentPrivateKey })
 registerTools(server, marketManager);
 
 // session -> transport map
