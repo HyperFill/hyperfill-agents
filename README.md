@@ -1,7 +1,7 @@
 # Sei HyperFill Agents
 
 ## TL,DR
-Multi agent system for automated DeFi trading and market making operations on the HyperFill protocol via Sei Network. The system coordinates specialized agents to analyze markets and execute trades based on financial strategies.
+For the SEI AI Hackathon, we've built an multi agent system for automated DeFi trading and market making operations called the HyperFill protocol. The system coordinates specialized agents to analyze markets and execute trades based on financial strategies.
 
 ## Architecture
 
